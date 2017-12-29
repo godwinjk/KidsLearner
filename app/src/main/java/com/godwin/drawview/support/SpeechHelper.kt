@@ -52,7 +52,7 @@ public class SpeechHelper {
         tts = TextToSpeech(context, TextToSpeech.OnInitListener { a ->
             if (a == TextToSpeech.SUCCESS) {
 
-                val result = tts?.setLanguage(Locale.US)
+                val result = tts?.setLanguage(Locale.UK)
 
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                     Log.e("TTS", "This Language is not supported")

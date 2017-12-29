@@ -20,12 +20,14 @@ public class TextExtractor {
                     ascInt = ascInt.plus(97)
                     val ascChar: Char = ascInt.toChar()
                     s = ascChar.toString()
+                    s += "."
                 }
                 3 -> {
                     var ascInt: Int = position
                     ascInt = ascInt.plus(65)
                     val ascChar: Char = ascInt.toChar()
                     s = ascChar.toString()
+                    s += "."
                 }
             }
             return s;

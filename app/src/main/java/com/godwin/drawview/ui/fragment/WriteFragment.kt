@@ -97,6 +97,11 @@ class WriteFragment : BaseFragment(), View.OnClickListener {
         startAnimationAfterDelay(500)
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        SpeechHelper.getInstance().shutDown()
+    }
+
     private fun fetchImage() {
         mHandDraw.overlayBitmap = FileManager.getBitmapFromExtern(mHomeItem!!, position)
     }
