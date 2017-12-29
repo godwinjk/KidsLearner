@@ -1,18 +1,24 @@
 package com.godwin.drawview.support
 
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import com.godwin.drawview.KidsApp
 import com.godwin.drawview.model.HomeItem
 import com.godwin.handdrawview.TimePoint
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.File
-import java.io.FileOutputStream
-import java.io.FileWriter
-import java.io.IOException
+import java.security.Permission
+import java.io.*
+import java.util.*
+import kotlin.collections.ArrayList
+
 
 /**
  * Created by Godwin on 02-12-2017 15:42 for DrawView.
@@ -56,11 +62,12 @@ class FileManager {
                 }
             }
             name.append(position)
-            name.append(".png")
-            val file = File(dir, name.toString())
-            if (!file.exists())
-                return null;
-            return BitmapFactory.decodeFile(file.absolutePath)
+//            name.append(".png")
+//            val file = File(dir, name.toString())
+//            if (!file.exists())
+//                return null
+            val id = KidsApp.context?.resources?.getIdentifier(name.toString(), "raw", KidsApp.context?.packageName)
+            return BitmapFactory.decodeResource(KidsApp.context?.resources, id!!)
         }
 
         fun writeBitmapToExtern(item: HomeItem, position: Int, bitmap: Bitmap): Bitmap {
@@ -128,6 +135,7 @@ class FileManager {
         }
 
         fun getTextfromExtern(item: HomeItem, position: Int): List<TimePoint> {
+            
             val dir = File(Environment.getExternalStorageDirectory(), "KidsApp")
             if (!dir.exists())
                 dir.mkdirs()
@@ -144,11 +152,22 @@ class FileManager {
                 }
             }
             name.append(position)
-            name.append(".json")
-            val file = File(dir, name.toString())
+            name.append("_d")
+//            name.append(".json")
+
+//            val file = File(dir, name.toString())
+
+            val resources = KidsApp.context?.resources
+            val ins = resources?.openRawResource(
+                    resources.getIdentifier(name.toString(),
+                            "raw",
+                            KidsApp.context?.packageName))
+            val s = Scanner(ins).useDelimiter("\\A")
+            val result = if (s.hasNext()) s.next() else ""
+
             val list = ArrayList<TimePoint>()
             try {
-                val data = file.readText(Charsets.UTF_8)
+                val data = result
                 val arr = JSONArray(data)
                 var i = 0
 
@@ -168,6 +187,21 @@ class FileManager {
                 e.printStackTrace()
             }
             return list
+        }
+
+        fun isPermissionGranted(activity: Activity): Boolean {
+            return ActivityCompat.
+                    checkSelfPermission(activity,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                    && ActivityCompat.
+                    checkSelfPermission(activity,
+                            Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+
+        fun showPermissionDialog(activity: Activity) {
+            if (isPermissionGranted(activity))
+                ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.READ_CONTACTS),
+                        100)
         }
     }
 }

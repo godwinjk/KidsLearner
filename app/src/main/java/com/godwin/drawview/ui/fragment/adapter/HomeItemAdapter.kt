@@ -34,6 +34,11 @@ class HomeItemAdapter : RecyclerView.Adapter<HomeItemAdapter.ViewHolder>() {
                 mListener.onItemClicked(holder.icon, homeItem, position)
             }
         })
+        holder.icon.setOnLongClickListener({ view ->
+            if (null != mListener)
+                mListener.onItemLongPressed(holder.icon, homeItem, position)
+            false
+        })
     }
 
     fun setHomeItems(mHomeItems: List<HomeItem>) {

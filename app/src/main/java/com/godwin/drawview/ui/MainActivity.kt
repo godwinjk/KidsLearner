@@ -9,7 +9,7 @@ import com.godwin.drawview.R
 import com.godwin.drawview.ui.fragment.SplashFragment
 import com.godwin.drawview.ui.view.ParallaxAnimationView
 
-class MainActivity : BaseActivity() {
+class   MainActivity : BaseActivity() {
     private lateinit var mContainer: FrameLayout
     private lateinit var mFragmentManager: FragmentManager
     private lateinit var mAnimationView: ParallaxAnimationView
@@ -55,5 +55,8 @@ class MainActivity : BaseActivity() {
         }
         transaction.commitAllowingStateLoss()
         mCurrentFragment = fragment
+    }
+    private fun checkForData(){
+
     }
 }

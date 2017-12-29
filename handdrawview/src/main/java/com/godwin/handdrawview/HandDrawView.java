@@ -55,7 +55,7 @@ public class HandDrawView extends View {
     private static final String TAG = HandDrawView.class.getSimpleName();
 
     private static final int DEFAULT_STROKE_WIDTH = 10;
-    private static final int DEFAULT_STROKE_WIDTH_FOR_ERASER = 50;
+    private static final int DEFAULT_STROKE_WIDTH_FOR_ERASER = 10;
     private static final int DEFAULT_COLOR = Color.BLACK;
     private static final int DEFAULT_FADE_SPEED = 50;
 
@@ -98,7 +98,7 @@ public class HandDrawView extends View {
 
     private boolean isCapturing;
     private boolean isFadeEffect;
-
+    private boolean isFadeEffectSet;
     private Path mPath;
 
     private Mode mMode = Mode.MARKER;
@@ -106,6 +106,8 @@ public class HandDrawView extends View {
     private List<LinePath> mFadePath = new ArrayList<>();
     private Timer mTimer;
     private int mFadeSpeed = DEFAULT_FADE_SPEED;
+    private int mFadeStep = 25;
+    private ValueAnimator animator = null;
 
     /**
      * Simple constructor to use when creating a view from code.
@@ -201,9 +203,9 @@ public class HandDrawView extends View {
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
         mPaint.setStrokeJoin(Paint.Join.ROUND);
-//        mPaint.setShadowLayer(2, 0, 0, mStrokeColor);
+//        mPaint.setShadowLayer(mStrokeWidth + .2f, 0, 0, mStrokeColor);
 
-        mDummyPaint = new Paint();
+        mDummyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     }
 
     private void initPath() {
@@ -222,32 +224,14 @@ public class HandDrawView extends View {
             canvas.drawPath(path.path, path.paint);
         }
         if (!isFadeEffect && mDrawingBitmap != null) {
-            canvas.drawBitmap(mDrawingBitmap, 0, 0, getPaint());
+            canvas.drawBitmap(mDrawingBitmap, 0, 0, mPaint);
         }
-        if (!isFadeEffect && mPointerBitmap != null && mPoint != null) {
+        if (mPointerBitmap != null && mPoint != null) {
             drawPointerBitmap(canvas, mPoint);
-        } else if (!isFadeEffect && mPointerBitmap == null && mPoint != null) {
-            drawCustomPointer(canvas, mPoint);
         }
         if (mOverlayBitmap != null) {
             drawOverlayBitmap(canvas);
         }
-    }
-
-    private void drawCustomPointer(Canvas canvas, TimePoint mPoint) {
-        float x = mPoint.getX(), y = mPoint.getY();
-        Path path = new Path();
-        path.moveTo(x, y);
-        path.lineTo(x + 10, y);
-        path.lineTo(x + 100, y - 100);
-        path.lineTo(x + 120, y - 110);
-        path.lineTo(x + 90, y - 130);
-        path.lineTo(x + 70, y - 90);
-        path.lineTo(x, y - 10);
-        path.lineTo(x, y);
-
-        canvas.drawPath(path, mPaint);
-
     }
 
     private void drawPointerBitmap(Canvas canvas, TimePoint point) {
@@ -270,6 +254,8 @@ public class HandDrawView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         if (!isEnabled())
             return false;
+        isFadeEffect = isFadeEffectSet;
+        stopAnimation();
         TimePoint p = TimePoint.from(event.getX(), event.getY());
         mPoint = p.clone();
         switch (event.getAction()) {
@@ -278,26 +264,29 @@ public class HandDrawView extends View {
                 mPoints.clear();
 
                 clearPath();
-                if (isDoubleClick()) break;
+                if (isDoubleClick()) {
+                    clear();
+                    return false;
+                }
                 this.mLastTouchX = event.getX();
                 this.mLastTouchY = event.getY();
-                moveTo();
-                addPoint(getNewPoint(p));
+                moveTo(mPoint);
+                addPoint(p);
                 if (null != mOnDrawListener) {
                     mOnDrawListener.onStartDraw(this);
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(p);
-                lineTo();
-                addPoint(getNewPoint(p));
+                lineTo(mPoint);
+                addPoint(p);
                 if (null != mOnDrawListener) {
                     mOnDrawListener.onDrawing(this, getBitmap());
                 }
                 break;
             case MotionEvent.ACTION_UP:
                 resetDirtyRect(p);
-                addPoint(getNewPoint(p));
+                addPoint(p);
                 getParent().requestDisallowInterceptTouchEvent(true);
                 if (null != mOnDrawListener) {
                     mOnDrawListener.onStopDrawing(this, getBitmap());
@@ -315,31 +304,38 @@ public class HandDrawView extends View {
         return true;
     }
 
-    private void moveTo() {
-        mPath = new Path();
-        mPath.moveTo(mPoint.x, mPoint.y);
+    private void moveTo(TimePoint point) {
+        if (isFadeEffect) {
+            mPath = new Path();
+            mPath.moveTo(point.x, point.y);
 
-        LinePath path = new LinePath();
-        path.paint = paintFromColor(mPaint.getColor());
-        path.path = mPath;
+            LinePath path = new LinePath();
+            path.paint = paintFromColor(mPaint.getColor());
+            path.path = mPath;
 
-        mFadePath.add(path);
-    }
-
-    private void lineTo() {
-        mPath.lineTo(mPoint.x, mPoint.y);
-        PathMeasure measure = new PathMeasure();
-//        mPath.quadTo(mLastTouchX, mLastTouchY, mPoint.x, mPoint.y);
-        measure.setPath(mPath, false);
-        float length = measure.getLength();
-        if (length > 20) {
-            moveTo();
-//            mPath.reset();
+            mFadePath.add(path);
         }
     }
 
+    private void lineTo(TimePoint point) {
+        if (isFadeEffect) {
+            mPath.lineTo(point.x, point.y);
+            moveTo(point);
+        }
+    }
+
+    public double getDistance(TimePoint point1, TimePoint point2) {
+        double d = Math.sqrt(Math.pow((point2.x - point1.x), 2) + Math.pow((point2.y - point1.y), 2));
+//        Log.i(TAG, String.format("x2: %s---y2:%s--x1:%s--y1:%s", point2.x, point2.y, point1.x, point1.y));
+        Log.i(TAG, "getDistance: " + d);
+        return d;
+    }
+
     private void clearPath() {
-        mPath.reset();
+        if (mPath != null)
+            mPath.reset();
+        mPath = null;
+//        mPoint = null;
     }
 
     private void resetDirtyRect(TimePoint point) {
@@ -351,8 +347,13 @@ public class HandDrawView extends View {
     }
 
     private void addPoint(TimePoint timePoint) {
-        if (isFadeEffect)
+        if (isCapturing) {
+            mExtractedPoints.add(timePoint.clone());
+        }
+        if (isFadeEffect) {
             return;
+        }
+        timePoint = getNewPoint(timePoint);
         capture(timePoint);
         mPoints.add(timePoint.clone());
         int pointsCount = mPoints.size();
@@ -601,7 +602,8 @@ public class HandDrawView extends View {
      * Start animation.
      */
     public void startAnimation() {
-        animation(mExtractedPoints);
+        if (mExtractedPoints != null && mExtractedPoints.size() > 0)
+            animation(mExtractedPoints);
     }
 
     /**
@@ -614,27 +616,46 @@ public class HandDrawView extends View {
     }
 
     private void animation(final List<TimePoint> points) {
-        ValueAnimator animator = ValueAnimator.ofInt(0, points.size());
-
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int i = (int) animation.getAnimatedValue();
-                try {
-                    if (points.size() > 0 && i >= 0 && i < points.size()) {
-                        mPoint = points.get(i);
-                        invalidate();
+        if (points != null && points.size() > 0) {
+            animator = ValueAnimator.ofInt(0, points.size() - 1);
+            isFadeEffectSet = isFadeEffect;
+            isFadeEffect = true;
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    int i = (int) animation.getAnimatedValue();
+                    try {
+                        if (isFadeEffect && points.size() > 0 && i >= 0 && i < points.size()) {
+                            mPoint = points.get(i);
+                            if (i == 0)
+                                moveTo(mPoint);
+                            else
+                                lineTo(points.get(i + 1));
+                            invalidate();
+                            if (i == points.size() - 1)
+                                isFadeEffect = isFadeEffectSet;
+                        } else {
+                            isFadeEffect = isFadeEffectSet;
+                        }
+                    } catch (Exception e) {
+                        Log.v(TAG, e.getLocalizedMessage());
+                        isFadeEffect = isFadeEffectSet;
                     }
-                } catch (Exception e) {
-                    Log.v(TAG, e.getLocalizedMessage());
                 }
-            }
-        });
+            });
 
-        int sec = mPoints.size() <= 100 ? 3 * 1000 : (mPoints.size() * 10);
-        animator.setDuration(sec);
-        animator.setInterpolator(new LinearInterpolator());
-        animator.start();
+            int sec = mPoints.size() <= 100 ? 5 * 1000 : (mPoints.size() * 30);
+            animator.setDuration(sec);
+            animator.setInterpolator(new LinearInterpolator());
+            animator.start();
+        }
+    }
+
+    private void stopAnimation() {
+        if (null != animator) {
+            animator.cancel();
+            animator = null;
+        }
     }
 
     /**
@@ -647,7 +668,7 @@ public class HandDrawView extends View {
         float xNormalizedValue = (getWidth() - getOverlayBitmap().getWidth()) / 2;
         float yNormalizedValue = (getHeight() - getOverlayBitmap().getHeight()) / 2;
         Log.d(TAG, String.format("X norm: %f  , Y norm: %f", xNormalizedValue, yNormalizedValue));
-        for (TimePoint p : mPoints) {
+        for (TimePoint p : mExtractedPoints) {
             TimePoint point = TimePoint.from(p.getX() - xNormalizedValue, p.getY() - yNormalizedValue);
             normalizedPoints.add(point);
         }
@@ -660,12 +681,14 @@ public class HandDrawView extends View {
      * @param points the points
      */
     public void setNormalizedPathPoints(List<TimePoint> points) {
-        float xNormalizedValue = (getWidth() - getOverlayBitmap().getWidth()) / 2;
-        float yNormalizedValue = (getHeight() - getOverlayBitmap().getHeight()) / 2;
-        mPoints.clear();
-        for (TimePoint p : points) {
-            TimePoint point = TimePoint.from(p.getX() + xNormalizedValue, p.getY() + yNormalizedValue);
-            mPoints.add(point);
+        if (points != null && points.size() > 0 && getOverlayBitmap() != null) {
+            float xNormalizedValue = (getWidth() - getOverlayBitmap().getWidth()) / 2;
+            float yNormalizedValue = (getHeight() - getOverlayBitmap().getHeight()) / 2;
+            mExtractedPoints.clear();
+            for (TimePoint p : points) {
+                TimePoint point = TimePoint.from(p.getX() + xNormalizedValue, p.getY() + yNormalizedValue);
+                mExtractedPoints.add(point);
+            }
         }
     }
 
@@ -733,22 +756,10 @@ public class HandDrawView extends View {
             y += ttt * curve.endPoint.y;
 
             // Set the incremental stroke width and draw.
-            mDrawingBitmapCanvas.drawPoint(x, y, getPaint());
+            mDrawingBitmapCanvas.drawPoint(x, y, mPaint);
 
             expandDirtyRect(x, y);
         }
-    }
-
-    private Paint getPaint() {
-        mPaint.setShader(null);
-        if (mMode == Mode.MARKER) {
-            mPaint.setXfermode(null);
-            mPaint.setStrokeWidth(mStrokeWidth);
-        } else {
-            mPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.XOR));
-            mPaint.setStrokeWidth(mStrokeWidthForEraser);
-        }
-        return mPaint;
     }
 
     /**
@@ -765,6 +776,8 @@ public class HandDrawView extends View {
             mDrawingBitmap = null;
             ensureDrawingBitmap();
         }
+        clearPath();
+        stopAnimation();
         if (null != mOnDrawListener) {
             mOnDrawListener.onClearCanvas(this);
         }
@@ -1019,18 +1032,15 @@ public class HandDrawView extends View {
                         Iterator<LinePath> itr = mFadePath.listIterator();
                         while (itr.hasNext()) {
                             LinePath path = itr.next();
-                            //if we can animate that path
-
-                            //get the alpha from the paint object of that Path
                             int currentAlpha = path.paint.getAlpha();
-                            //let's reduce the alpha
-                            currentAlpha -= 20;
+                            float strokeWidth = path.paint.getStrokeWidth();
+                            strokeWidth -= .6f;
+                            path.paint.setStrokeWidth(strokeWidth);
 
-                            //set the new alpha back in the LinePath object
+                            currentAlpha -= mFadeStep;
                             path.paint.setAlpha(currentAlpha);
-
                             //remove the linePath from the queue if the alpha value is 0
-                            if (currentAlpha <= 0) {
+                            if (currentAlpha <= 0 || strokeWidth <= 0) {
                                 itr.remove();
                             }
                         }
@@ -1055,9 +1065,10 @@ public class HandDrawView extends View {
         p.setColor(color);
         p.setStrokeWidth(mStrokeWidth);
         p.setStyle(Paint.Style.STROKE);
-//        p.setStrokeJoin(Paint.Join.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
 //        p.setStrokeCap(Paint.Cap.ROUND);
-//        p.setShadowLayer(20, 0, 0, color);
+//        p.setStrokeMiter(5);
+        p.setShadowLayer(mStrokeWidth + 1, 0, 0, color);
         return p;
     }
 

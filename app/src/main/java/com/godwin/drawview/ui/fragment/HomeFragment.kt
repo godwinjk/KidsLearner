@@ -60,17 +60,36 @@ class HomeFragment : BaseFragment(), OnItemClickListener {
         val homeItem = item as HomeItem
         when (homeItem.iconId) {
             R.drawable.numbers -> {
-                mActivity.attachFragment(WriteFragment.newInstance(homeItem), true)
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,false), true)
             }
             R.drawable.alpha_l -> {
-                mActivity.attachFragment(WriteFragment.newInstance(homeItem), true)
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,false), true)
             }
             R.drawable.alpha_u -> {
-                mActivity.attachFragment(WriteFragment.newInstance(homeItem), true)
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,false), true)
             }
             R.drawable.words -> {
-                mActivity.attachFragment(WriteFragment.newInstance(homeItem), true)
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,false), true)
             }
         }
     }
+
+    override fun onItemLongPressed(view: View?, item: Any?, position: Int?) {
+        val homeItem = item as HomeItem
+        when (homeItem.iconId) {
+            R.drawable.numbers -> {
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,true), true)
+            }
+            R.drawable.alpha_l -> {
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,true), true)
+            }
+            R.drawable.alpha_u -> {
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,true), true)
+            }
+            R.drawable.words -> {
+                mActivity.attachFragment(WriteFragment.newInstance(homeItem,true), true)
+            }
+        }
+    }
+
 }// Required empty public constructor

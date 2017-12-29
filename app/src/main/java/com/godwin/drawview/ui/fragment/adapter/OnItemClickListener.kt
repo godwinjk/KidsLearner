@@ -8,4 +8,5 @@ import android.view.View
  */
 interface OnItemClickListener {
     fun onItemClicked(view: View?, item: Any?, position: Int?)
+    fun onItemLongPressed(view: View?, item: Any?, position: Int?)
 }
